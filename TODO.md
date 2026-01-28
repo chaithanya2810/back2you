@@ -1,0 +1,3 @@
+- [ ] Check if JWT_SECRET is properly set in backend/.env and restart the server to load environment variables
+- [ ] Add token existence check in PostItem.jsx before sending POST request
+- [ ] Test posting a lost item after login to ensure token is valid and output is correct

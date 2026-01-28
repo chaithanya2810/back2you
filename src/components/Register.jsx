@@ -2,13 +2,14 @@ import React, { useState } from "react";
 
 export default function Register({ onRegistered }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.password) {
@@ -16,8 +17,40 @@ export default function Register({ onRegistered }) {
       return;
     }
 
-    alert("Registration Successful!");
-    if (onRegistered) onRegistered(); // move to login page
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert("Error: " + (data.message || "Registration failed"));
+        setLoading(false);
+        return;
+      }
+
+      // Save token to localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      alert("Registration Successful!");
+      if (onRegistered) onRegistered(); // move to login page
+      setLoading(false);
+    } catch (error) {
+      alert("Error: " + error.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +78,9 @@ export default function Register({ onRegistered }) {
           value={form.password}
           onChange={handleChange}
         />
-        <button type="submit">Register</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Registering..." : "Register"}
+        </button>
       </form>
     </div>
   );

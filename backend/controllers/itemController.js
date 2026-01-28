@@ -2,59 +2,85 @@ const Item = require('../models/Item');
 
 exports.createItem = async (req, res) => {
   const { title, description, category, date, location, status } = req.body;
-  const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
+  // Store only relative path, never full disk path
+  let imagePath = null;
+  if (req.file) {
+    imagePath = `/uploads/${req.file.filename}`;
+  }
+
   const newItem = await Item.create({
-    title, description, category, date, location,
+    title,
+    description,
+    category,
+    date,
+    location,
     status: status || 'lost',
     imagePath,
     postedBy: req.user.id,
     approved: false
   });
+
   res.status(201).json(newItem);
 };
 
+
 exports.getItems = async (req, res) => {
-  // filters: category, status, dateFrom, dateTo, q(search text), page, limit
-  const { category, status, q, page = 1, limit = 10 } = req.query;
-  const filter = {};
-  if (category) filter.category = category;
-  if (status) filter.status = status;
-  if (q) filter.$text = { $search: q }; // requires text index if used
-  const items = await Item.find(filter)
-    .populate('postedBy', 'name email')
-    .sort({ createdAt: -1 })
-    .skip((page-1)*limit)
-    .limit(Number(limit));
-  res.json(items);
+  try {
+    const { category, status, q, page = 1, limit = 10 } = req.query;
+    const filter = {};
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+    if (q) filter.$text = { $search: q };
+
+    const items = await Item.find(filter)
+      .populate('postedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    // FIX old Windows paths permanently
+    for (const item of items) {
+      if (item.imagePath && item.imagePath.includes("D:")) {
+        const filename = item.imagePath.split('\\').pop();
+        item.imagePath = `/uploads/${filename}`;
+        await item.save(); // save fixed path back to MongoDB
+      }
+    }
+
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    res.status(500).json({ message: 'Error fetching items', error: error.message });
+  }
 };
+
 
 exports.getItemById = async (req, res) => {
   const item = await Item.findById(req.params.id).populate('postedBy', 'name email');
   if (!item) return res.status(404).json({ message: 'Not found' });
+
+  // FIX imagePath for old items
+  if (item.imagePath && item.imagePath.includes("\\backend\\uploads\\")) {
+    const filename = item.imagePath.split("\\").pop();
+    item.imagePath = `/uploads/${filename}`;
+  }
+
   res.json(item);
 };
 
-exports.updateItem = async (req, res) => {
-  const item = await Item.findById(req.params.id);
-  if (!item) return res.status(404).json({ message: 'Not found' });
-  if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin')
-    return res.status(403).json({ message: 'Not allowed' });
-
-  // accept fields
-  Object.assign(item, req.body);
-  if (req.file) item.imagePath = `/uploads/${req.file.filename}`;
-  await item.save();
-  res.json(item);
-};
 
 exports.deleteItem = async (req, res) => {
   const item = await Item.findById(req.params.id);
   if (!item) return res.status(404).json({ message: 'Not found' });
   if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin')
     return res.status(403).json({ message: 'Not allowed' });
-  await item.remove();
+  await Item.findByIdAndDelete(req.params.id);
   res.json({ message: 'Deleted' });
 };
+
+
+
 
 exports.markReturned = async (req, res) => {
   const item = await Item.findById(req.params.id);
@@ -63,3 +89,5 @@ exports.markReturned = async (req, res) => {
   await item.save();
   res.json(item);
 };
+
+//recieves data from frontend, uses item model to save new item in database,

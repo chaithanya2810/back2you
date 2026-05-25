@@ -30,7 +30,6 @@ Back2You is a full-stack MERN application designed to help users report, search,
 ## Installation
 
 ### Clone the repository
-```bash
 git clone <your-repo-link>
 cd back2you
 

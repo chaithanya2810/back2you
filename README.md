@@ -30,24 +30,25 @@ Back2You is a full-stack MERN application designed to help users report, search,
 ## Installation
 
 ### Clone the repository
-git clone <your-repo-link>
+git clone <your-repo-link>  
 cd back2you
 
 ### Install frontend dependencies
-cd client
+cd client   
 npm install
 
 ### Install backend dependencies
-cd ../server
+cd ../server   
 npm install
 
 ### Run the Project
-### Start backend server
+### Start backend server   
 npm start
 
-### Start frontend
-cd client
+### Start frontend   
+cd client   
 npm start
+
 
 ## Future Improvements
 - Real-time notifications
